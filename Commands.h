@@ -21,6 +21,7 @@ public:
     virtual void execute() = 0;
     int getNumOfArguments() const;
     char* getCmdLine();
+    char* getRealCmdLine();
     char* getLastPwd();
     char** getArgsArray();
     void setLastPwd(char* new_path);
@@ -50,7 +51,6 @@ public:
     void execute() override;
 };
 
-
 class PipeCommand : public Command {
     // TODO: Add your data members
 public:
@@ -69,10 +69,7 @@ public:
     //void cleanup() override;
 };
 
-
-
 /*********************************************************************************************************************/
-
 
 ///we added this class
 class ChpromptCommand : public BuiltInCommand {
@@ -110,7 +107,7 @@ class JobsList;
 class QuitCommand : public BuiltInCommand {
 // TODO: Add your data members
 public:
-    QuitCommand(const char* cmd_line, JobsList* jobs);
+    QuitCommand(const char* cmd_line): BuiltInCommand(cmd_line){}
     virtual ~QuitCommand() {}
     void execute() override;
 };
@@ -125,7 +122,6 @@ public:
         // TODO: Add your data members
 
         const char* cmd_line;
-//        Command* command;
         int id;
         int pid;
         bool is_stopped;
@@ -141,8 +137,8 @@ public:
         const char* getCmdLine() const;
         void Stop();
         void Run();
-//        bool operator<(const JobEntry& other) const;
-//        bool operator>(const JobEntry& other) const;
+        bool operator<(const JobEntry& other) const;
+        bool operator>(const JobEntry& other) const;
     };
     // TODO: Add your data members
 
@@ -161,7 +157,7 @@ public:
     // TODO: Add extra methods or modify exisitng ones as needed
     int maxJobId() const;
     void sort();
-    std::vector<JobsList::JobEntry*>* getJobsList();
+    std::vector<JobsList::JobEntry*>* getJobsVector();
 
 };
 
@@ -173,7 +169,7 @@ public:
 class JobsCommand : public BuiltInCommand {
     // TODO: Add your data members
 public:
-    JobsCommand(const char* cmd_line, JobsList* jobs);
+    JobsCommand(const char* cmd_line): BuiltInCommand(cmd_line){}
     virtual ~JobsCommand() {}
     void execute() override;
 };
@@ -181,16 +177,15 @@ public:
 class ForegroundCommand : public BuiltInCommand {
     // TODO: Add your data members
 public:
-    ForegroundCommand(const char* cmd_line, JobsList* jobs);
+    ForegroundCommand(const char* cmd_line): BuiltInCommand(cmd_line){}
     virtual ~ForegroundCommand() {}
     void execute() override;
 };
 
 class BackgroundCommand : public BuiltInCommand {
     // TODO: Add your data members
-    JobsList* jobs;
 public:
-    BackgroundCommand(const char* cmd_line, JobsList* jobs): BuiltInCommand(cmd_line), jobs(jobs){}
+    BackgroundCommand(const char* cmd_line): BuiltInCommand(cmd_line){}
     virtual ~BackgroundCommand() {}
     void execute() override;
 };
@@ -221,18 +216,17 @@ public:
 };
 
 class SetcoreCommand : public BuiltInCommand {
-    JobsList* jobs;
+    // TODO: Add your data members
 public:
-    SetcoreCommand(const char* cmd_line, JobsList* jobs): BuiltInCommand(cmd_line), jobs(jobs){}
+    SetcoreCommand(const char* cmd_line): BuiltInCommand(cmd_line){}
     virtual ~SetcoreCommand() {}
     void execute() override;
 };
 
 class KillCommand : public BuiltInCommand {
     // TODO: Add your data members
-    JobsList* jobs;
 public:
-    KillCommand(const char* cmd_line, JobsList* jobs): BuiltInCommand(cmd_line),jobs(jobs){}
+    KillCommand(const char* cmd_line, JobsList* jobs): BuiltInCommand(cmd_line){}
     virtual ~KillCommand() {}
     void execute() override;
 };
@@ -246,6 +240,7 @@ private:
     // TODO: Add your data members
     std::string prompt;
     int pid;
+    JobsList* jobs_list;
 
     SmallShell();
 public:
@@ -265,6 +260,7 @@ public:
     std::string getPrompt();
     void setPrompt(std::string&);
     int getPid();
+    JobsList* getJobsList();
 };
 
 #endif //SMASH_COMMAND_H_
