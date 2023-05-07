@@ -9,7 +9,7 @@ void ctrlZHandler(int sig_num) {
 	// TODO: Add your implementation
 }
 //sa3d shorrosh
-int getSaed(){
+int getSaed_g45(){
     return 5;
 }
 
