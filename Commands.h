@@ -46,7 +46,7 @@ public:
 
 class ExternalCommand : public Command {
 public:
-    ExternalCommand(const char* cmd_line);
+    ExternalCommand(const char* cmd_line):Command(cmd_line){}
     virtual ~ExternalCommand() {}
     void execute() override;
 };
@@ -97,7 +97,7 @@ public:
 
 class ShowPidCommand : public BuiltInCommand {
 public:
-    ShowPidCommand(const char* cmd_line);
+    ShowPidCommand(const char* cmd_line): BuiltInCommand(cmd_line){}
     virtual ~ShowPidCommand() {}
     void execute() override;
 };
@@ -145,6 +145,7 @@ public:
     std::vector<JobEntry*> jobs;
 public:
     JobsList() = default;
+
     ~JobsList() = default;
     void addJob(Command* cmd, int id, int pid, bool is_stopped = false);
     void printJobsList();

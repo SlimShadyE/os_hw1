@@ -116,6 +116,12 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     else if(firstWord.compare("cd") == 0){
         return new ChangeDirCommand(cmd_line, NULL);
     }
+    else if(firstWord.compare("jobs")== 0){
+        return new JobsCommand(cmd_line);
+    }
+    else{
+        return new ExternalCommand(cmd_line);
+    }
 
     return nullptr;
 }
@@ -226,10 +232,11 @@ void Command::DeleteLastPwd_ptr() {
 
 void ChpromptCommand::execute() {
     SmallShell& smallshell = SmallShell::getInstance();
-    if(getNumOfArguments()==1)
-    {
-        smallshell.setPrompt((string &) "smash");
-    } else{
+    if(getNumOfArguments()==1){
+        std::string smash = "smash";
+        smallshell.setPrompt(smash);
+    }
+    else{
         std::string new_prompt = getArgsArray()[1];
         smallshell.setPrompt(new_prompt);
     }
@@ -444,6 +451,8 @@ void KillCommand::execute() {
         cerr<< "smash error: kill: invalid arguments"<<endl;
     };
 }
+
+/** BG Command */
 
 void ExternalCommand::execute(){
     char* cmd_line = getCmdLine();
@@ -846,3 +855,4 @@ JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
 std::vector<JobsList::JobEntry *> *JobsList::getJobsVector() {
     return &jobs;
 }
+
