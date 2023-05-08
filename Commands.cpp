@@ -190,7 +190,7 @@ Command::Command(const char *cmd_line) {
 
     is_background_cmd = _isBackgroundComamnd(cmd_line);
     _removeBackgroundSign(this->cmd_line); ///zdt hay
-    num_of_args = _parseCommandLine(cmd_line, args); /** 3'yrt mn cmd_line la cmd_line */
+    num_of_args = _parseCommandLine(this->cmd_line, args); /** 3'yrt mn cmd_line la cmd_line */
 }
 
 Command::~Command() {
