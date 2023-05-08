@@ -266,6 +266,7 @@ public:
     int getCurrentJobID() const;
     int getCurrentJobPID() const;
     void NullifyCurrentProcess();
+    void UpdateCurrentProcess(int job_id,int job pid, char* job_cmd_line);
 };
 
 #endif //SMASH_COMMAND_H_

@@ -211,6 +211,12 @@ void SmallShell::NullifyCurrentProcess(){
     current_job_pid = -1;
 }
 
+void SmallShell::UpdateCurrentProcess(int job_id, int job_pid, char* job_cmd_line) {
+    current_job_cmd_line = job_cmd_line;
+    current_job_id = job_id;
+    current_job_pid = job_pid;
+}
+
 /*********************************************************************************************************************/
 
 /*** COMMAND FUNCTIONS ***/
@@ -364,6 +370,7 @@ void ForegroundCommand::execute(){
 
     }else if(num_of_args == 2){
         // specified job
+
         if(ContainsNumber(string(args[1]))){
             int job_id = stoi(args[1]);
             job = jobs_list->getJobById(job_id);
@@ -396,6 +403,9 @@ void ForegroundCommand::execute(){
 
     cout << job->getCmdLine() <<" : " << job->getPID() << endl;
 
+    /// EF7S EZA FE 7AJI ELO
+//    small_shell.UpdateCurrentProcess(job->getID(),job->getPID(),cmd_line);
+
     jobs_list->removeJobById(job->getID());
 
     int res = waitpid(job->getPID(),NULL,WUNTRACED);
@@ -404,7 +414,7 @@ void ForegroundCommand::execute(){
         return;
     }
 
-    /// UPDATE CURRENT JOB IN SHELL
+    small_shell.NullifyCurrentProcess();
 }
 
 void BackgroundCommand::execute() {
@@ -545,11 +555,17 @@ void ExternalCommand::execute(){
         //printf("IS BG");
         jobs_list->addJob(this,  jobs_list->maxJobId()+1, pid);
     } else{
+
+        /// EF7S EZA FE 7AJI ELO
+//    small_shell.UpdateCurrentProcess(job->getID(),job->getPID(),cmd_line);
+
         if(waitpid(pid,&status,WUNTRACED) == -1)
         {
             perror("smash error: waitpid failed");
             return;
         }
+        /// msh lazm atapel bl process el current abel el3amaleyye?
+        small_shell.NullifyCurrentProcess();
     }
 }
 
