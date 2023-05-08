@@ -818,7 +818,7 @@ void JobsList::addJob(Command *cmd, int id, int pid, bool is_stopped) {
     time_t curr_time;
     time(&curr_time);
 
-    auto* new_job = new JobEntry(cmd->getCmdLine(), job_id, pid, is_stopped, curr_time);
+    auto* new_job = new JobEntry(cmd->getCmdLine(), id, pid, is_stopped, curr_time);
 
     jobs.push_back(new_job);
 
