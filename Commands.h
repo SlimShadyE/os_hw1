@@ -34,6 +34,7 @@ public:
 };
 
 
+
 /*********************************************************************************************************************/
 
 
@@ -114,26 +115,27 @@ public:
 
 /*********************************************************************************************************************/
 
-
 class JobsList {
 public:
     class JobEntry {
         // TODO: Add your data members
 
         const char* cmd_line;
+        const char* real_cmd_line;
         int id;
         int pid;
         bool is_stopped;
         time_t time;
 
     public:
-        JobEntry(char* cmd_line, int id, int pid, bool is_stopped, time_t time);
+        JobEntry(char* real_cmd_line,char* cmd_line, int id, int pid, bool is_stopped, time_t time);
         int getID() const;
         int getPID() const;
         bool isStopped() const;
         void setIsStopped(bool);
         time_t getTime() const;
         const char* getCmdLine() const;
+        const char* getRealCmdLine() const;
         void Stop();
         void Run();
         bool operator<(const JobEntry& other) const;
@@ -161,9 +163,7 @@ public:
 
 };
 
-
 /*********************************************************************************************************************/
-
 
 
 class JobsCommand : public BuiltInCommand {
@@ -231,16 +231,18 @@ public:
     void execute() override;
 };
 
-
 /*********************************************************************************************************************/
-
 
 class SmallShell {
 private:
     // TODO: Add your data members
     std::string prompt;
-    int pid;
+    int shell_pid;
     JobsList* jobs_list;
+
+    char* current_job_cmd_line;
+    int current_job_id;
+    int current_job_pid;
 
     SmallShell();
 public:
@@ -255,12 +257,15 @@ public:
     }
     ~SmallShell();
     void executeCommand(const char* cmd_line);
-    // TODO: add extra methods as needed
 
     std::string getPrompt();
     void setPrompt(std::string&);
     int getPid();
     JobsList* getJobsList();
+    char* getCurrentJobCmdLine();
+    int getCurrentJobID() const;
+    int getCurrentJobPID() const;
+    void NullifyCurrentProcess();
 };
 
 #endif //SMASH_COMMAND_H_

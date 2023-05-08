@@ -112,19 +112,29 @@ bool ContainsNumber(const string &s){
 /*** SMALLSHELL FUNCTIONS ***/
 
 
-SmallShell::SmallShell() {
-// TODO: add your implementation
+SmallShell::SmallShell():prompt("smash")
+{
+    // TODO: add your implementation
+    this->shell_pid = getpid();
+
+    if(shell_pid == -1)
+    {
+        perror("smash error: getpid failed");
+        return;
+    }
+
+    jobs_list = new JobsList();
 }
 
 SmallShell::~SmallShell() {
 // TODO: add your implementation
+    delete jobs_list;
 }
 
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
 Command * SmallShell::CreateCommand(const char* cmd_line) {
-    // For example:
 
     string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
@@ -162,11 +172,9 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
-    // TODO: Add your implementation here
-    // for example:
+    jobs_list->removeFinishedJobs();
     Command* cmd = CreateCommand(cmd_line);
     cmd->execute();
-    // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
 std::string SmallShell::getPrompt() {
@@ -178,13 +186,30 @@ void SmallShell::setPrompt(std::string& new_prompt) {
 }
 
 int SmallShell::getPid(){
-    return pid;
+    return shell_pid;
 }
 
 JobsList* SmallShell::getJobsList(){
     return jobs_list;
 }
 
+char* SmallShell::getCurrentJobCmdLine() {
+    return current_job_cmd_line;
+}
+
+int SmallShell::getCurrentJobID() const {
+    return current_job_id;
+}
+
+int SmallShell::getCurrentJobPID() const {
+    return current_job_pid;
+}
+
+void SmallShell::NullifyCurrentProcess(){
+    current_job_cmd_line = nullptr;
+    current_job_id = -1;
+    current_job_pid = -1;
+}
 
 /*********************************************************************************************************************/
 
@@ -265,7 +290,7 @@ void ChpromptCommand::execute() {
 void ShowPidCommand::execute()
 {
     int pid = SmallShell::getInstance().getPid();
-    std::cout<< "smash pid is "+ to_string(pid)  << std::endl;
+    std::cout<< "smash shell_pid is "+ to_string(pid)  << std::endl;
 }
 
 void GetCurrDirCommand::execute() {
@@ -310,6 +335,12 @@ void ChangeDirCommand::execute() {
     }
     DeleteLastPwd_ptr();
     setLastPwd(temp);
+}
+
+void JobsCommand::execute(){
+    SmallShell& small_shell = SmallShell::getInstance();
+    JobsList* jobs_list = small_shell.getJobsList();
+    jobs_list->printJobsList();
 }
 
 void ForegroundCommand::execute(){
@@ -465,7 +496,7 @@ void KillCommand::execute() {
             return;
         }
         if(-1!=kill(job->getPID(),signum)){
-            cout << "signal number " << signum << " was sent to pid " << job->getPID() << endl;
+            cout << "signal number " << signum << " was sent to shell_pid " << job->getPID() << endl;
         }
         /*** Do we need to add SIGSTOPPED and SIGCONT to stop and continue jobs ??? */
     }
@@ -507,11 +538,12 @@ void ExternalCommand::execute(){
             perror("smash error: execvp failed");
             return;
         }
+        return;
     }
 
     if(is_bg_cmd){
         //printf("IS BG");
-        jobs_list->addJob(this, pid, -1);
+        jobs_list->addJob(this,  jobs_list->maxJobId()+1, pid);
     } else{
         if(waitpid(pid,&status,WUNTRACED) == -1)
         {
@@ -734,6 +766,11 @@ const char* JobsList::JobEntry::getCmdLine() const {
     return cmd_line;
 }
 
+const char* JobsList::JobEntry::getRealCmdLine() const {
+    return real_cmd_line;
+}
+
+
 void JobsList::JobEntry::Stop() {
     is_stopped = true;
 }
@@ -742,8 +779,8 @@ void JobsList::JobEntry::Run() {
     is_stopped = false;
 }
 
-JobsList::JobEntry::JobEntry(char *cmd_line, int id, int pid, bool is_stopped, time_t time) : cmd_line(cmd_line)
-        , is_stopped(is_stopped), id(id), pid(pid), time(time){}
+JobsList::JobEntry::JobEntry(char* real_cmd_line,char* cmd_line, int id, int pid, bool is_stopped, time_t time)
+: real_cmd_line(real_cmd_line), cmd_line(cmd_line), is_stopped(is_stopped), id(id), pid(pid), time(time){}
 
 void JobsList::JobEntry::setIsStopped(bool flag) {
     is_stopped=flag;
@@ -819,18 +856,22 @@ int JobsList::maxJobId() const {
     return temp;
 }
 
+
+/********************** EM7A!!!!!!!!!!!!!!!!!! ***************************/
 void JobsList::addJob(Command *cmd, int id, int pid, bool is_stopped) {
-    int job_id;
-    if(pid<=0){
-        job_id = this->maxJobId()+1;
-    }
-    else{
-        job_id = id;
-    }
+    removeFinishedJobs();
+//    int job_id;
+//    if(shell_pid<=0){
+//        job_id = this->maxJobId()+1;
+//    }
+//    else{
+//        job_id = id;
+//    }
     time_t curr_time;
     time(&curr_time);
 
-    auto* new_job = new JobEntry(cmd->getCmdLine(), id, pid, is_stopped, curr_time);
+    auto* new_job = new JobEntry(cmd->getRealCmdLine(),cmd->getCmdLine()
+                                 , id, pid, is_stopped, curr_time);
 
     jobs.push_back(new_job);
 
@@ -843,7 +884,7 @@ void JobsList::killAllJobs() {
             perror("smash error: kill failed");
             return;
         }
-        cout << jobs[i]->getID() << ": " << jobs[i]->getCmdLine() << endl;
+        cout << jobs[i]->getID() << ": " << jobs[i]->getRealCmdLine() << endl;
     }
 }
 
