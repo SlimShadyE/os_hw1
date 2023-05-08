@@ -83,9 +83,34 @@ void _removeBackgroundSign(char* cmd_line) {
     cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
+
+/*** ADDED HELPING FUNCTIONS ***/
+
+bool is_number(const std::string& s) {
+    if (s.empty()) {
+        return false;
+    }
+    for (char c : s) {
+        if (!std::isdigit(c)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool ContainsNumber(const string &s){
+    for (char const &i : s){
+        if (std::isdigit(i) == 0){
+            return false;
+        }
+    }
+    return true;
+}
+
 /*********************************************************************************************************************/
 
-// TODO: Add your implementation for classes in Commands.h
+/*** SMALLSHELL FUNCTIONS ***/
+
 
 SmallShell::SmallShell() {
 // TODO: add your implementation
@@ -134,9 +159,6 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
-
-/*** ADDED FUNCTIONS ***/
-
 std::string SmallShell::getPrompt() {
     return prompt;
 }
@@ -153,28 +175,11 @@ JobsList* SmallShell::getJobsList(){
     return jobs_list;
 }
 
-bool is_number(const std::string& s) {
-    if (s.empty()) {
-        return false;
-    }
-    for (char c : s) {
-        if (!std::isdigit(c)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool ContainsNumber(const string &s){
-    for (char const &i : s){
-        if (std::isdigit(i) == 0){
-            return false;
-        }
-    }
-    return true;
-}
 
 /*********************************************************************************************************************/
+
+/*** COMMAND FUNCTIONS ***/
+
 
 Command::Command(const char *cmd_line) {
     args = new char*[COMMAND_MAX_ARGS];
@@ -229,6 +234,11 @@ void Command::DeleteLastPwd_ptr() {
     delete plast_pwd;
     plast_pwd = nullptr; /// 3'yrt mn NULL la nullptr
 }
+
+/*********************************************************************************************************************/
+
+/*** EXECUTE FUNCTIONS ***/
+
 
 void ChpromptCommand::execute() {
     SmallShell& smallshell = SmallShell::getInstance();
@@ -677,7 +687,6 @@ void TimeoutCommand::execute(){
 
 BuiltInCommand::BuiltInCommand(const char* cmd_line): Command(cmd_line){}
 
-/// ymkn fsh 7aji elhn 3shan elsater elle fo2
 GetCurrDirCommand::GetCurrDirCommand(const char* cmd_line): BuiltInCommand(cmd_line){
 }
 
@@ -687,7 +696,10 @@ ChpromptCommand::ChpromptCommand(const char* cmd_line): BuiltInCommand(cmd_line)
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd):BuiltInCommand(cmd_line) {
 }
 
+
 /*********************************************************************************************************************/
+
+/*** JOBLIST FUNCTIONS ***/
 
 int JobsList::JobEntry::getID() const {
     return  id;
