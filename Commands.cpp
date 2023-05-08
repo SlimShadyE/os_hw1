@@ -129,6 +129,12 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
 
+    if(cmd_s.find(">")!=string::npos) {
+        return new RedirectionCommand(cmd_line);
+    }
+    if(cmd_s.find("|")!=string::npos){
+        return new PipeCommand(cmd_line);
+    }
     if(firstWord.compare("chprompt") == 0){
         return new ChpromptCommand(cmd_line);
     }
@@ -144,9 +150,13 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     else if(firstWord.compare("jobs")== 0){
         return new JobsCommand(cmd_line);
     }
+    else if(firstWord.compare("quit")==0){
+        return new QuitCommand(cmd_line);
+    }
     else{
         return new ExternalCommand(cmd_line);
     }
+
 
     return nullptr;
 }
@@ -408,8 +418,10 @@ void QuitCommand::execute(){
     SmallShell& small_shell = SmallShell::getInstance();
     JobsList* jobs_list = small_shell.getJobsList();
 
-    if(strcmp("kill", args[1]) == 0){
-        jobs_list->killAllJobs();
+    if(getNumOfArguments()>1){
+        if(strcmp("kill", args[1]) == 0){
+            jobs_list->killAllJobs();
+        }
     }
     exit(0);
 }
@@ -519,7 +531,7 @@ void PipeCommand::execute() {
     string pipe_argument = args_array[1];
     char last_char = pipe_argument.back();//to check if & is there
 
-    int save_stdin = dup(0); //To save the stdin file object for later
+    int save_stdin = dup(STDIN_FILENO); //To save the stdin file object for later
     pid_t pid=fork();
     if(pid<0){
         perror("smash error: fork failed");
@@ -534,7 +546,7 @@ void PipeCommand::execute() {
                 perror("smash error: close failed");
                 return;
             }
-            if(dup2(new_pipe[1],2)==-1){
+            if(dup2(new_pipe[1],STDERR_FILENO)==-1){
                 perror("smash error: dup2 failed");
                 return;
             }
@@ -544,7 +556,7 @@ void PipeCommand::execute() {
                 perror("smash error: close failed");
                 return;
             }
-            if(dup2(new_pipe[1],1)==-1){
+            if(dup2(new_pipe[1],STDOUT_FILENO)==-1){
                 perror("smash error: dup2 failed");
                 return;
             }
@@ -825,7 +837,7 @@ void JobsList::addJob(Command *cmd, int id, int pid, bool is_stopped) {
 }
 
 void JobsList::killAllJobs() {
-    cout<< "sending SIGKILL signal to " << jobs.size() <<"jobs:" << endl;
+    cout<< "sending SIGKILL signal to " << jobs.size() <<" jobs:" << endl;
     for(int i=0 ; i<jobs.size() ; i++ ){
         if(kill(jobs[i]->getPID(),SIGKILL)){
             perror("smash error: kill failed");
@@ -872,3 +884,45 @@ std::vector<JobsList::JobEntry *> *JobsList::getJobsVector() {
     return &jobs;
 }
 
+void RedirectionCommand::execute() {
+    SmallShell& smash = SmallShell::getInstance();
+    string cmd_line = getCmdLine();
+    string command = cmd_line.substr(0, cmd_line.find_first_of('>'));
+    /**CAN ARGS BE GREATER THAN 3 ? IF NO CHECK NUM OF ARGS (ANSWER:NO)
+     * replace stdout_fileno with numbers*/
+    char** args_array = getArgsArray();
+    int i=0;
+
+    while(strcmp(args_array[i] ,">")!=0  && strcmp(args_array[i] , ">>") != 0){
+        i++;
+    }
+    string redirection_char = args_array[i];
+
+    i++;
+    char* destination = args_array[i];
+    int save_stdout = dup(STDOUT_FILENO);
+    close(STDOUT_FILENO);
+    int new_fd;
+
+    int flags = (redirection_char == ">") ? (O_WRONLY | O_CREAT | O_TRUNC) :
+                (redirection_char == ">>") ? (O_WRONLY | O_CREAT | O_APPEND) :
+                -1;
+
+    if(flags == -1){ //if there are more than two >>
+        perror("smash error: invalid arguments");
+        return;
+    }
+
+    new_fd = open(destination,flags, 0655);
+    if(new_fd < 0){
+        perror("smash error: open failed");
+        dup2(save_stdout,STDOUT_FILENO);
+        close(save_stdout);
+        return;
+    }
+    smash.executeCommand(command.c_str());
+    //Restores fd after done with the redirection
+    close(new_fd);
+    dup2(save_stdout,STDOUT_FILENO);
+    close(save_stdout);
+}
