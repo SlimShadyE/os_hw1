@@ -409,8 +409,7 @@ void ForegroundCommand::execute(){
 
     cout << job->getCmdLine() <<" : " << job->getPID() << endl;
 
-    /// EF7S EZA FE 7AJI ELO
-//    small_shell.UpdateCurrentProcess(job->getID(),job->getPID(),cmd_line);
+    small_shell.UpdateCurrentProcess(job->getID(),job->getPID(),cmd_line);
 
     jobs_list->removeJobById(job->getID());
 
@@ -562,8 +561,8 @@ void ExternalCommand::execute(){
         jobs_list->addJob(this,  jobs_list->maxJobId()+1, pid);
     } else{
 
-        /// EF7S EZA FE 7AJI ELO
-//    small_shell.UpdateCurrentProcess(job->getID(),job->getPID(),cmd_line);
+        //the job id is set to -1 because it is irrelevant in this case
+        small_shell.UpdateCurrentProcess(-1,pid,cmd_line);
 
         if(waitpid(pid,&status,WUNTRACED) == -1)
         {
@@ -632,7 +631,7 @@ void PipeCommand::execute() {
         }
         Command* command = SmallShell::getInstance().CreateCommand(before_pipe.c_str());
         command->execute();
-        delete command; //Why do we need to delete when there's no new?
+        delete command;
         exit(0);
     }
     else{
@@ -652,6 +651,8 @@ void PipeCommand::execute() {
             delete command;
             return;
         }
+        delete command;
+        exit(0);
     }
 }
 
@@ -786,7 +787,6 @@ ChpromptCommand::ChpromptCommand(const char* cmd_line): BuiltInCommand(cmd_line)
 ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd):BuiltInCommand(cmd_line) {
 }
 
-
 /*********************************************************************************************************************/
 
 /*** JOBLIST FUNCTIONS ***/
@@ -814,7 +814,6 @@ const char* JobsList::JobEntry::getCmdLine() const {
 const char* JobsList::JobEntry::getRealCmdLine() const {
     return real_cmd_line;
 }
-
 
 void JobsList::JobEntry::Stop() {
     is_stopped = true;
