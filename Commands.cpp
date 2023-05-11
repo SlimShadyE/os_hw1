@@ -570,7 +570,11 @@ void ExternalCommand::execute(){
 }
 
 void PipeCommand::execute() {
+    printf("In pipe \n");
     int new_pipe[2];
+    SmallShell& smash = SmallShell::getInstance();
+    string cmd_line = getCmdLine();
+    string after_pipe = cmd_line.substr(0, cmd_line.find_first_of('|'));
     if(pipe(new_pipe)==-1){
         perror("smash error: pipe failed");
         return;
@@ -609,6 +613,7 @@ void PipeCommand::execute() {
                 return;
             }
         }
+        printf("in first exe \n");
         Command* command = SmallShell::getInstance().CreateCommand(args_array[0]);
         command->execute();
         delete command; //Why do we need to delete when there's no new?
@@ -622,6 +627,9 @@ void PipeCommand::execute() {
         if(dup2(new_pipe[0], 0)==-1){
             perror("smash error: dup2 failed");
         }
+        printf("in second exe \n");
+        Command* command = SmallShell::getInstance().CreateCommand(after_pipe.c_str());
+        command->execute();
         int wait = waitpid(pid,nullptr,0);
         if(wait==-1){
             perror("smash error: wait failed");
