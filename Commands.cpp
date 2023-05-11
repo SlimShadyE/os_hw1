@@ -718,7 +718,8 @@ void ChmodCommand::execute(){
 
     char* cmd_line_cpy = strdup(cmd_line);
 
-    mode_t permissions = strtol(args[1], NULL, 8); // Convert the permissions string to an integer
+    // Convert the permissions string to an integer
+    mode_t permissions = strtol(args[1], NULL, 8);
 
     // Open the file for read/write access
     int fd = open(path, O_RDWR);
