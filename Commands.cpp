@@ -163,6 +163,12 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     else if(firstWord.compare("quit")==0){
         return new QuitCommand(cmd_line);
     }
+    else if(firstWord.compare("setcore")==0){
+        return new SetcoreCommand(cmd_line);
+    }
+    else if(firstWord.compare("getfileinfo")==0){
+        return new GetFileTypeCommand(cmd_line);
+    }
     else{
         return new ExternalCommand(cmd_line);
     }
@@ -570,18 +576,26 @@ void ExternalCommand::execute(){
 }
 
 void PipeCommand::execute() {
-    printf("In pipe \n");
+    //printf("In pipe \n");
     int new_pipe[2];
     SmallShell& smash = SmallShell::getInstance();
     string cmd_line = getCmdLine();
-    string after_pipe = cmd_line.substr(0, cmd_line.find_first_of('|'));
+    //pipe_string contains '| ' or '|&'
+    string pipe_string = cmd_line.substr(cmd_line.find_first_of('|'),2);
+    string after_pipe = cmd_line.substr( cmd_line.find_first_of('|')+2);
+    string before_pipe = cmd_line.substr( 0, cmd_line.find_first_of('|')-1);
+//    cout<< "PIPE :" << pipe_string << endl;
+//    cout<< "AFTER PIPE :" << after_pipe << endl;
+//    cout<< "BEFORE PIPE :" << before_pipe << endl;
+
+
+//    cout << after_pipe << endl;
     if(pipe(new_pipe)==-1){
         perror("smash error: pipe failed");
         return;
     }
     char** args_array = getArgsArray();
-    string pipe_argument = args_array[1];
-    char last_char = pipe_argument.back();//to check if & is there
+    char last_char = pipe_string.back();//to check if & is there
 
     int save_stdin = dup(STDIN_FILENO); //To save the stdin file object for later
     pid_t pid=fork();
@@ -593,6 +607,7 @@ void PipeCommand::execute() {
      * AND CHECK IF WE SHOULD REPLACE PERROR WITH CERR << **/
     if(pid==0){ //Child
         setpgrp();
+        //printf("CHILD \n");
         if(last_char == '&'){
             if(close(new_pipe[0]) || close(2)){
                 perror("smash error: close failed");
@@ -604,17 +619,18 @@ void PipeCommand::execute() {
             }
         }
         else{
+
             if(close(new_pipe[0]) || close(1)){
                 perror("smash error: close failed");
                 return;
             }
+
             if(dup2(new_pipe[1],STDOUT_FILENO)==-1){
                 perror("smash error: dup2 failed");
                 return;
             }
         }
-        printf("in first exe \n");
-        Command* command = SmallShell::getInstance().CreateCommand(args_array[0]);
+        Command* command = SmallShell::getInstance().CreateCommand(before_pipe.c_str());
         command->execute();
         delete command; //Why do we need to delete when there's no new?
         exit(0);
@@ -627,12 +643,13 @@ void PipeCommand::execute() {
         if(dup2(new_pipe[0], 0)==-1){
             perror("smash error: dup2 failed");
         }
-        printf("in second exe \n");
+        //printf("After pipe %s \n", after_pipe.c_str());
         Command* command = SmallShell::getInstance().CreateCommand(after_pipe.c_str());
         command->execute();
         int wait = waitpid(pid,nullptr,0);
         if(wait==-1){
             perror("smash error: wait failed");
+            delete command;
             return;
         }
     }
@@ -655,9 +672,12 @@ void SetcoreCommand::execute() {
         cerr << "smash error: setcore job-id" << job_id << " does not exist" << endl;
         return;
     }
+    cout<<"CORE NUMBER " << core_id <<endl;
     cpu_set_t core;
     CPU_ZERO(&core); //zeros out all bits of the CPU's (none active)
     CPU_SET(core_id,&core); // turns on requested CPU
+    cout<<"PID NUMBER " << job->getPID() <<endl;
+
     if(sched_setaffinity(job->getPID(),sizeof(cpu_set_t), &core)==-1){
         cerr<< "smash error: setcore: invalid core number" << endl;
         return;
