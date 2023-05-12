@@ -1039,3 +1039,8 @@ void RedirectionCommand::execute() {
     dup2(save_stdout,STDOUT_FILENO);
     close(save_stdout);
 }
+
+time_t JobsList::JobEntry::getDuration() {
+    return duration;
+}
+

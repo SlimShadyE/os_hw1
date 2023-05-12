@@ -139,6 +139,7 @@ public:
         void Run();
         bool operator<(const JobEntry& other) const;
         bool operator>(const JobEntry& other) const;
+        time_t getDuration();
     };
     // TODO: Add your data members
 
@@ -158,7 +159,6 @@ public:
     int maxJobId() const;
     void sort();
     std::vector<JobsList::JobEntry*>* getJobsVector();
-
 };
 
 /*********************************************************************************************************************/

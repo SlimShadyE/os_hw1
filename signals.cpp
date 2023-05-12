@@ -56,6 +56,38 @@ void ctrlCHandler(int sig_num) {
 }
 
 void alarmHandler(int sig_num) {
-  // TODO: Add your implementation
+    cout << "smash: got an alarm" << endl;
+
+    SmallShell& small_shell = SmallShell::getInstance();
+    JobsList* jobs_list = small_shell.getJobsList();
+    JobsList* timeout_jobs_list = small_shell.getTimeOutJobsList();
+    JobsList::JobEntry* timeout_job = timeout_jobs_list->front();
+
+    jobs_list->removeFinishedJobs();
+
+//
+//    time_t duration = timeout_job->getDuration();
+//    time_t entry_time = timeout_job->getTime();
+//
+//    time_t current_time;
+//    if((int)time(&current_time) == -1){
+//        perror("smash error: time failed");
+//        return;
+//    }
+//
+//    time_t time_left = entry_time - current_time + duration
+
+    int pid = timeout_job->getPID();
+
+    //send SIGKILL if job not finished
+    if(waitpid(pid, NULL , WNOHANG) == 0){
+        if(kill(pid,SIGKILL) == -1){
+            perror("smash error: kill failed");
+        } else{
+            cout << "smash: " << timeout_entry->getCommandLine() << " timed out!" << endl;
+        }
+    }
+
+    timeout_jobs_list->pop_front();
 }
 
