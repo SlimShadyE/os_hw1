@@ -114,7 +114,6 @@ bool ContainsNumber(const string &s){
 
 SmallShell::SmallShell():prompt("smash")
 {
-    // TODO: add your implementation
     this->shell_pid = getpid();
 
     if(shell_pid == -1)
@@ -124,11 +123,12 @@ SmallShell::SmallShell():prompt("smash")
     }
 
     jobs_list = new JobsList();
+    timeout_jobs_list = new JobsList();
 }
 
 SmallShell::~SmallShell() {
-// TODO: add your implementation
     delete jobs_list;
+    delete timeout_jobs_list;
 }
 
 /**
@@ -172,8 +172,6 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     else{
         return new ExternalCommand(cmd_line);
     }
-
-
     return nullptr;
 }
 
@@ -221,6 +219,10 @@ void SmallShell::UpdateCurrentProcess(int job_id, int job_pid, char* job_cmd_lin
     current_job_cmd_line = job_cmd_line;
     current_job_id = job_id;
     current_job_pid = job_pid;
+}
+
+JobsList* SmallShell::getTimeOutJobsList() {
+    return timeout_jobs_list;
 }
 
 /*********************************************************************************************************************/
@@ -520,8 +522,6 @@ void KillCommand::execute() {
     };
 }
 
-/** BG Command */
-
 void ExternalCommand::execute(){
     char* cmd_line = getCmdLine();
     char** args = getArgsArray();
@@ -529,12 +529,25 @@ void ExternalCommand::execute(){
     bool is_bg_cmd = isBackgroundCommand();
     SmallShell &small_shell = SmallShell::getInstance();
     JobsList* jobs_list = small_shell.getJobsList();
+    JobsList* timeout_jobs_list = small_shell.getTimeOutJobsList();
 
 
-    string cmd_line_string = string(cmd_line);
+//    string cmd_line_string = string(cmd_line);
+//
+//    bool is_complex =
+//            ((cmd_line_string.find("*") != std::string::npos) || (cmd_line_string.find("?") != std::string::npos));
+//
 
-    bool is_complex =
-            ((cmd_line_string.find("*") != std::string::npos) || (cmd_line_string.find("?") != std::string::npos));
+    bool timeout;
+    time_t duration;
+    string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+    if(firstWord.compare("timeout") == 0){
+        timeout = true;
+        duration = stoi(args[2]);
+    }else{
+        timeout = false;
+        duration = -1;
+    }
 
     int status;
     int pid = fork();
@@ -558,17 +571,29 @@ void ExternalCommand::execute(){
 
     if(is_bg_cmd){
         //printf("IS BG");
-        jobs_list->addJob(this,  jobs_list->maxJobId()+1, pid);
+        jobs_list->addJob(this, jobs_list->maxJobId()+1, pid);
+
+        if(timeout){
+            //job id is irrelevant in timeout list
+            timeout_jobs_list->addJob(this, -1, pid, false, duration);
+        }
+
     } else{
 
         //the job id is set to -1 because it is irrelevant in this case
         small_shell.UpdateCurrentProcess(-1,pid,cmd_line);
+
+        if(timeout){
+            //job id is irrelevant in timeout list
+            timeout_jobs_list->addJob(this, -1, pid, false, duration);
+        }
 
         if(waitpid(pid,&status,WUNTRACED) == -1)
         {
             perror("smash error: waitpid failed");
             return;
         }
+
         /// msh lazm atapel bl process el current abel el3amaleyye?
         small_shell.NullifyCurrentProcess();
     }
@@ -791,6 +816,7 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd):BuiltI
 
 /*** JOBLIST FUNCTIONS ***/
 
+
 int JobsList::JobEntry::getID() const {
     return  id;
 }
@@ -823,8 +849,10 @@ void JobsList::JobEntry::Run() {
     is_stopped = false;
 }
 
-JobsList::JobEntry::JobEntry(char* real_cmd_line,char* cmd_line, int id, int pid, bool is_stopped, time_t time)
-: real_cmd_line(real_cmd_line), cmd_line(cmd_line), is_stopped(is_stopped), id(id), pid(pid), time(time){}
+JobsList::JobEntry::JobEntry(char* real_cmd_line,char* cmd_line, int id, int pid, bool is_stopped, time_t time
+                             ,time_t duration)
+: real_cmd_line(real_cmd_line), cmd_line(cmd_line), is_stopped(is_stopped), id(id), pid(pid), time(time)
+, duration(duration){}
 
 void JobsList::JobEntry::setIsStopped(bool flag) {
     is_stopped=flag;
@@ -902,7 +930,7 @@ int JobsList::maxJobId() const {
 
 
 /********************** EM7A!!!!!!!!!!!!!!!!!! ***************************/
-void JobsList::addJob(Command *cmd, int id, int pid, bool is_stopped) {
+void JobsList::addJob(Command *cmd, int id, int pid, bool is_stopped, time_t duration) {
     removeFinishedJobs();
 //    int job_id;
 //    if(shell_pid<=0){
@@ -915,7 +943,7 @@ void JobsList::addJob(Command *cmd, int id, int pid, bool is_stopped) {
     time(&curr_time);
 
     auto* new_job = new JobEntry(cmd->getRealCmdLine(),cmd->getCmdLine()
-                                 , id, pid, is_stopped, curr_time);
+                                 , id, pid, is_stopped, curr_time, duration);
 
     jobs.push_back(new_job);
 

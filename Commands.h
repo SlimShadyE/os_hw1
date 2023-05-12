@@ -6,6 +6,7 @@
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
+
 class Command {
 // TODO: Add your data members
     char** args;
@@ -33,11 +34,7 @@ public:
     bool isBackgroundCommand();
 };
 
-
-
 /*********************************************************************************************************************/
-
-
 
 class BuiltInCommand : public Command {
 public:
@@ -126,9 +123,11 @@ public:
         int pid;
         bool is_stopped;
         time_t time;
+        //only relevant in timeout list
+        time_t duration;
 
     public:
-        JobEntry(char* real_cmd_line,char* cmd_line, int id, int pid, bool is_stopped, time_t time);
+        JobEntry(char* real_cmd_line,char* cmd_line, int id, int pid, bool is_stopped, time_t time,time_t duration = -1);
         int getID() const;
         int getPID() const;
         bool isStopped() const;
@@ -148,7 +147,7 @@ public:
     JobsList() = default;
 
     ~JobsList() = default;
-    void addJob(Command* cmd, int id, int pid, bool is_stopped = false);
+    void addJob(Command* cmd, int id, int pid, bool is_stopped = false, time_t duration = -1);
     void printJobsList();
     void killAllJobs();
     void removeFinishedJobs();
@@ -156,7 +155,6 @@ public:
     void removeJobById(int jobId);
     JobEntry * getLastJob(int* lastJobId);
     JobEntry *getLastStoppedJob(int *jobId);
-    // TODO: Add extra methods or modify exisitng ones as needed
     int maxJobId() const;
     void sort();
     std::vector<JobsList::JobEntry*>* getJobsVector();
@@ -164,7 +162,6 @@ public:
 };
 
 /*********************************************************************************************************************/
-
 
 class JobsCommand : public BuiltInCommand {
     // TODO: Add your data members
@@ -244,6 +241,8 @@ private:
     int current_job_id;
     int current_job_pid;
 
+    JobsList* timeout_jobs_list;
+
     SmallShell();
 public:
     Command* CreateCommand(const char* cmd_line);
@@ -267,6 +266,8 @@ public:
     int getCurrentJobPID() const;
     void NullifyCurrentProcess();
     void UpdateCurrentProcess(int job_id,int job_pid, char* job_cmd_line);
+
+    JobsList* getTimeOutJobsList();
 };
 
 #endif //SMASH_COMMAND_H_
