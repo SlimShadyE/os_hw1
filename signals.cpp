@@ -14,15 +14,14 @@ void ctrlZHandler(int sig_num) {
     int curr_job_pid = small_shell.getCurrentJobPID();
     char* curr_job_cmd_line = small_shell.getCurrentJobCmdLine();
 
-    cout << "small_shell: got ctrl-Z" << endl;
+    cout << "smash: got ctrl-Z" << endl;
 
     if(curr_job_pid < 0){
+        cout << curr_job_pid << endl;
         return;
     }
 
     Command* current_command = new ExternalCommand(curr_job_cmd_line);
-
-    cout << "rami fc" << endl;
 
     jobs_list->addJob(current_command,curr_job_id,curr_job_pid,true);
 

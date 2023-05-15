@@ -174,7 +174,8 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     }
     else if(firstWord.compare("fg") == 0){
         return new ForegroundCommand(cmd_line);
-    }else if(firstWord.compare("bg") == 0){
+    }
+    else if(firstWord.compare("bg") == 0){
         return new ForegroundCommand(cmd_line);
     }else{
         return new ExternalCommand(cmd_line);
@@ -245,7 +246,9 @@ Command::Command(const char *cmd_line) {
     strcpy(this->cmd_line, cmd_line);
 
     is_background_cmd = _isBackgroundComamnd(cmd_line);
-    _removeBackgroundSign(this->cmd_line); ///zdt hay
+    if(is_background_cmd){
+        _removeBackgroundSign(this->cmd_line); ///zdt hay
+    }
     num_of_args = _parseCommandLine(this->cmd_line, args); /** 3'yrt mn cmd_line la cmd_line */
 }
 
@@ -311,7 +314,7 @@ void ChpromptCommand::execute() {
 void ShowPidCommand::execute()
 {
     int pid = SmallShell::getInstance().getPid();
-    std::cout<< "smash shell_pid is "+ to_string(pid)  << std::endl;
+    std::cout<< "smash pid is "+ to_string(pid)  << std::endl;
 }
 
 void GetCurrDirCommand::execute() {
@@ -556,7 +559,6 @@ void ExternalCommand::execute(){
         duration = -1;
     }
 
-    int status;
     int pid = fork();
 
     if(pid == -1){
@@ -608,11 +610,15 @@ void ExternalCommand::execute(){
             }
 
             //pid>0
-            if(waitpid(pid,&status,WUNTRACED) == -1){
+
+            small_shell.UpdateCurrentProcess(-1,pid,cmd_line);
+
+            if(waitpid(pid,nullptr,WUNTRACED) == -1){
                 perror("smash error: waitpid failed");
                 return;
             }
             small_shell.NullifyCurrentProcess();
+
 //            jobs_list->addJob(this, jobs_list->maxJobId()+1, pid);
 //
 //            if(timeout){
@@ -642,11 +648,6 @@ void ExternalCommand::execute(){
         }
         //pid>0
 
-        if(waitpid(pid,&status,WUNTRACED) == -1){
-            perror("smash error: waitpid failed");
-            return;
-        }
-
         //the job id is set to -1 because it is irrelevant in this case
         small_shell.UpdateCurrentProcess(-1,pid,cmd_line);
 
@@ -655,7 +656,7 @@ void ExternalCommand::execute(){
             timeout_jobs_list->addJob(this, -1, pid, false, duration);
         }
 
-        if(waitpid(pid,&status,WUNTRACED) == -1)
+        if(waitpid(pid, nullptr,WUNTRACED) == -1)
         {
             perror("smash error: waitpid failed");
             return;
