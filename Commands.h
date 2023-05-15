@@ -270,4 +270,8 @@ public:
     JobsList* getTimeOutJobsList();
 };
 
+void rja(){
+    return;
+}
+
 #endif //SMASH_COMMAND_H_
