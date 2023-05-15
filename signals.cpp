@@ -2,6 +2,8 @@
 #include <signal.h>
 #include "signals.h"
 #include "Commands.h"
+#include <sys/wait.h>
+
 
 using namespace std;
 
@@ -61,7 +63,9 @@ void alarmHandler(int sig_num) {
     SmallShell& small_shell = SmallShell::getInstance();
     JobsList* jobs_list = small_shell.getJobsList();
     JobsList* timeout_jobs_list = small_shell.getTimeOutJobsList();
-    JobsList::JobEntry* timeout_job = timeout_jobs_list->front();
+
+    /// lazm front bs pop_front msh zabta f7ttet back w pop back
+    JobsList::JobEntry* timeout_job = timeout_jobs_list->getJobsVector()->back();
 
     jobs_list->removeFinishedJobs();
 
@@ -84,10 +88,11 @@ void alarmHandler(int sig_num) {
         if(kill(pid,SIGKILL) == -1){
             perror("smash error: kill failed");
         } else{
-            cout << "smash: " << timeout_entry->getCommandLine() << " timed out!" << endl;
+            cout << "smash: " << timeout_job->getCmdLine() << " timed out!" << endl;
         }
     }
 
-    timeout_jobs_list->pop_front();
+    /// lazm pop_front bs msh zabta
+    timeout_jobs_list->getJobsVector()->pop_back();
 }
 
