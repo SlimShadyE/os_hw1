@@ -1099,6 +1099,5 @@ void RedirectionCommand::execute() {
 
 time_t JobsList::JobEntry::getDuration() {
     return duration;
-    printf("test");
 }
 
