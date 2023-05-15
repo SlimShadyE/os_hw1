@@ -308,7 +308,6 @@ void ShowPidCommand::execute()
 }
 
 void GetCurrDirCommand::execute() {
-    SmallShell& smallshell = SmallShell::getInstance();
     char* dir = getcwd(NULL,0);
     if(dir){
         cout << dir << endl;
@@ -425,15 +424,15 @@ void ForegroundCommand::execute(){
 }
 
 void BackgroundCommand::execute() {
-    int* id;
+    int id;
     JobsList::JobEntry* job;
     char** args_array = getArgsArray();
     SmallShell& small_shell = SmallShell::getInstance();
     JobsList* jobs_list = small_shell.getJobsList();
 
     if(getNumOfArguments()==0){
-        job = jobs_list->getLastStoppedJob(id);
-        if(*id==0){
+        job = jobs_list->getLastStoppedJob(&id);
+        if(id==0){
             cerr<<"smash error: bg: there is no stopped jobs to resume" <<endl;
             return;
         }
@@ -445,7 +444,7 @@ void BackgroundCommand::execute() {
             return;
         }
         int arg1 = stoi(string1);
-        JobsList::JobEntry *job = jobs_list->getJobById(arg1);
+        job = jobs_list->getJobById(arg1);
         if(!job){
             cerr<<"smash error: bg: job-id "<< id <<" does not exist"<<endl;
             return;
@@ -462,7 +461,6 @@ void BackgroundCommand::execute() {
 
 void QuitCommand::execute(){
     char** args = getArgsArray();
-    int num_of_args = getNumOfArguments();
     SmallShell& small_shell = SmallShell::getInstance();
     JobsList* jobs_list = small_shell.getJobsList();
 
@@ -525,22 +523,24 @@ void KillCommand::execute() {
 void ExternalCommand::execute(){
     char* cmd_line = getCmdLine();
     char** args = getArgsArray();
-    int num_of_args = getNumOfArguments();
     bool is_bg_cmd = isBackgroundCommand();
     SmallShell &small_shell = SmallShell::getInstance();
     JobsList* jobs_list = small_shell.getJobsList();
     JobsList* timeout_jobs_list = small_shell.getTimeOutJobsList();
 
 
-//    string cmd_line_string = string(cmd_line);
-//
-//    bool is_complex =
-//            ((cmd_line_string.find("*") != std::string::npos) || (cmd_line_string.find("?") != std::string::npos));
-//
+    string cmd_line_string = string(cmd_line);
+
+    bool is_complex =
+            ((cmd_line_string.find("*") != std::string::npos) || (cmd_line_string.find("?") != std::string::npos));
+
 
     bool timeout;
     time_t duration;
+
+    string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+
     if(firstWord.compare("timeout") == 0){
         timeout = true;
         duration = stoi(args[2]);
@@ -556,29 +556,89 @@ void ExternalCommand::execute(){
         perror("smash error: fork failed");
         return;
     }
-
-    if(pid == 0){
-        if (setpgrp() == -1) {
-            perror("smash error: setpgrp failed");
-            return;
-        }
-        if(execvp(args[0],args) == -1){
-            perror("smash error: execvp failed");
-            return;
-        }
-        return;
-    }
+    char *  new_args[4];
+    new_args[0] = new char[10];
+    new_args[1] = new char[3];
+    strcpy(new_args[0], "/bin/bash");
+    strcpy(new_args[1], "-c");
+    new_args[2] = cmd_line;
+    new_args[3] = NULL;
 
     if(is_bg_cmd){
-        //printf("IS BG");
+        if(pid == 0){
+            if(setpgrp() == -1) {
+                perror("smash error: setpgrp failed");
+                return;
+            }
+            if(execv("/bin/bash", new_args) == -1){
+                perror("smash error: execv failed");
+                return;
+            }
+            return;
+        }
+        //pid>0
+
         jobs_list->addJob(this, jobs_list->maxJobId()+1, pid);
 
         if(timeout){
             //job id is irrelevant in timeout list
             timeout_jobs_list->addJob(this, -1, pid, false, duration);
         }
+        return;
 
     } else{
+        if(is_complex){
+            if(pid == 0){
+                if(setpgrp() == -1) {
+                    perror("smash error: setpgrp failed");
+                    return;
+                }
+                if(execv("/bin/bash", new_args) == -1){
+                    perror("smash error: execv failed");
+                    return;
+                }
+                return;
+            }
+
+            //pid>0
+            if(waitpid(pid,&status,WUNTRACED) == -1){
+                perror("smash error: waitpid failed");
+                return;
+            }
+            small_shell.NullifyCurrentProcess();
+//            jobs_list->addJob(this, jobs_list->maxJobId()+1, pid);
+//
+//            if(timeout){
+//                //job id is irrelevant in timeout list
+//                timeout_jobs_list->addJob(this, -1, pid, false, duration);
+//            }
+
+            return;
+        }
+
+        // if not complex and is fg
+
+        if(pid == 0){
+            if(setpgrp() == -1) {
+                perror("smash error: setpgrp failed");
+                return;
+            }
+
+
+            /// ymkn lazm n3ml copy largs abel mnb3ta
+
+            if(execvp(args[0],args) == -1){
+                perror("smash error: execvp failed");
+                return;
+            }
+            return;
+        }
+        //pid>0
+
+        if(waitpid(pid,&status,WUNTRACED) == -1){
+            perror("smash error: waitpid failed");
+            return;
+        }
 
         //the job id is set to -1 because it is irrelevant in this case
         small_shell.UpdateCurrentProcess(-1,pid,cmd_line);
@@ -602,7 +662,6 @@ void ExternalCommand::execute(){
 void PipeCommand::execute() {
     //printf("In pipe \n");
     int new_pipe[2];
-    SmallShell& smash = SmallShell::getInstance();
     string cmd_line = getCmdLine();
     //pipe_string contains '| ' or '|&'
     string pipe_string = cmd_line.substr(cmd_line.find_first_of('|'),2);
@@ -618,10 +677,10 @@ void PipeCommand::execute() {
         perror("smash error: pipe failed");
         return;
     }
-    char** args_array = getArgsArray();
     char last_char = pipe_string.back();//to check if & is there
 
-    int save_stdin = dup(STDIN_FILENO); //To save the stdin file object for later
+//    int save_stdin = dup(STDIN_FILENO); //To save the stdin file object for later
+    dup(STDIN_FILENO);
     pid_t pid=fork();
     if(pid<0){
         perror("smash error: fork failed");
@@ -682,7 +741,6 @@ void PipeCommand::execute() {
 }
 
 void SetcoreCommand::execute() {
-    SmallShell& smash = SmallShell::getInstance();
     char** args_array = getArgsArray();
     SmallShell& small_shell = SmallShell::getInstance();
     JobsList* jobs_list = small_shell.getJobsList();
@@ -849,10 +907,9 @@ void JobsList::JobEntry::Run() {
     is_stopped = false;
 }
 
-JobsList::JobEntry::JobEntry(char* real_cmd_line,char* cmd_line, int id, int pid, bool is_stopped, time_t time
-                             ,time_t duration)
-: real_cmd_line(real_cmd_line), cmd_line(cmd_line), is_stopped(is_stopped), id(id), pid(pid), time(time)
-, duration(duration){}
+JobsList::JobEntry::JobEntry(char* real_cmd_line, char* cmd_line, int id, int pid, bool is_stopped, time_t time, time_t duration)
+        : real_cmd_line(real_cmd_line), cmd_line(cmd_line), id(id), pid(pid), is_stopped(is_stopped), time(time), duration(duration)
+{}
 
 void JobsList::JobEntry::setIsStopped(bool flag) {
     is_stopped=flag;
@@ -943,7 +1000,7 @@ void JobsList::addJob(Command *cmd, int id, int pid, bool is_stopped, time_t dur
     time(&curr_time);
 
     auto* new_job = new JobEntry(cmd->getRealCmdLine(),cmd->getCmdLine()
-                                 , id, pid, is_stopped, curr_time, duration);
+            , id, pid, is_stopped, curr_time, duration);
 
     jobs.push_back(new_job);
 
@@ -951,7 +1008,7 @@ void JobsList::addJob(Command *cmd, int id, int pid, bool is_stopped, time_t dur
 
 void JobsList::killAllJobs() {
     cout<< "sending SIGKILL signal to " << jobs.size() <<" jobs:" << endl;
-    for(int i=0 ; i<jobs.size() ; i++ ){
+    for(unsigned i=0 ; i<jobs.size() ; i++ ){
         if(kill(jobs[i]->getPID(),SIGKILL)){
             perror("smash error: kill failed");
             return;

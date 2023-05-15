@@ -117,8 +117,8 @@ public:
     class JobEntry {
         // TODO: Add your data members
 
-        const char* cmd_line;
         const char* real_cmd_line;
+        const char* cmd_line;
         int id;
         int pid;
         bool is_stopped;
