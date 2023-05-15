@@ -160,6 +160,9 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     else if(firstWord.compare("jobs")== 0){
         return new JobsCommand(cmd_line);
     }
+    else if(firstWord.compare("kill")==0){
+        return new KillCommand(cmd_line, this->getJobsList());
+    }
     else if(firstWord.compare("quit")==0){
         return new QuitCommand(cmd_line);
     }
@@ -482,7 +485,7 @@ void KillCommand::execute() {
 
     if(first_arg.substr(0,1) == "-"){
         first_arg = first_arg.substr(1);
-        if(first_arg.find_first_of(" \n")==string::npos){
+        if(first_arg.find_first_of(" \n")!=string::npos){
             cerr << "smash error: kill: invalid arguments" <<  endl;
             return;
         }
