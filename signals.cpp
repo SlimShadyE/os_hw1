@@ -21,6 +21,9 @@ void ctrlZHandler(int sig_num) {
     }
 
     Command* current_command = new ExternalCommand(curr_job_cmd_line);
+
+    cout << "rami fc" << endl;
+
     jobs_list->addJob(current_command,curr_job_id,curr_job_pid,true);
 
     if(kill(curr_job_pid,SIGSTOP) == -1){

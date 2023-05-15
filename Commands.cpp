@@ -160,19 +160,23 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     else if(firstWord.compare("jobs")== 0){
         return new JobsCommand(cmd_line);
     }
-    else if(firstWord.compare("kill")==0){
+    else if(firstWord.compare("kill") == 0){
         return new KillCommand(cmd_line, this->getJobsList());
     }
-    else if(firstWord.compare("quit")==0){
+    else if(firstWord.compare("quit") == 0){
         return new QuitCommand(cmd_line);
     }
-    else if(firstWord.compare("setcore")==0){
+    else if(firstWord.compare("setcore") == 0){
         return new SetcoreCommand(cmd_line);
     }
-    else if(firstWord.compare("getfileinfo")==0){
+    else if(firstWord.compare("getfileinfo") == 0){
         return new GetFileTypeCommand(cmd_line);
     }
-    else{
+    else if(firstWord.compare("fg") == 0){
+        return new ForegroundCommand(cmd_line);
+    }else if(firstWord.compare("bg") == 0){
+        return new ForegroundCommand(cmd_line);
+    }else{
         return new ExternalCommand(cmd_line);
     }
     return nullptr;
@@ -514,7 +518,7 @@ void KillCommand::execute() {
             return;
         }
         if(-1!=kill(job->getPID(),signum)){
-            cout << "signal number " << signum << " was sent to shell_pid " << job->getPID() << endl;
+            cout << "signal number " << signum << " was sent to pid " << job->getPID() << endl;
         }
         /*** Do we need to add SIGSTOPPED and SIGCONT to stop and continue jobs ??? */
     }
@@ -952,7 +956,7 @@ void JobsList::printJobsList(){
         time_diff = difftime(curr_time, job->getTime());
 
         cout << "[" << to_string(job->getID()) << "] ";
-        cout << job->getCmdLine() << " : " << job->getPID() << " " << time_diff << " secs";
+        cout << job->getRealCmdLine() << " : " << job->getPID() << " " << time_diff << " secs";
 
         if(job->isStopped())
         {
