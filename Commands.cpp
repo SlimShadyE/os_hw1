@@ -331,31 +331,36 @@ void ChangeDirCommand::execute() {
     int chdir_res;
     char** args_array = getArgsArray();
     if(getNumOfArguments() > 2){
-        cout << "smash error: cd: too many arguments" << endl;
+        cerr << "smash error: cd: too many arguments" << endl;
         return;
     }
     if(strcmp(args_array[1],"-")==0){
         if(!getLastPwd()){
-            cout << "smash error: cd: OLDPWD not set" << endl;
-            return;
-        }
-        char* temp = getcwd(NULL, 0);
-        DeleteLastPwd_ptr();
-        setLastPwd(temp);
-        chdir_res = chdir(args_array[1]);
-        if(!chdir_res){
-            perror("smash error: chdir failed ");
+            cerr << "smash error: cd: OLDPWD not set" << endl;
             return;
         }
 
-    }
-    char* temp = getcwd(NULL, 0);
-    chdir_res = chdir(args_array[1]);
-    cout << getcwd(NULL,0) << endl;
-    if(!chdir_res){
-        perror("smash error: chdir failed ");
+        char* temp = getcwd(NULL, 0);
+        char* new_pwd = getLastPwd();
+        DeleteLastPwd_ptr();
+        setLastPwd(temp);
+        chdir_res = chdir(new_pwd);
+        if(!chdir_res){
+            perror("smash error: chdir failed: No such file or directory");
+            return;
+        }
         return;
     }
+    char* temp = getcwd(NULL, 0);
+//    char* msad= args_array[1];
+    chdir_res = chdir(args_array[1]);
+//    char* next = getcwd(NULL, 0);
+    if(chdir_res==-1){
+        perror("smash error: chdir failed: No such file or directory");
+        return;
+    }
+    //cout << getcwd(NULL,0) << endl;
+
     DeleteLastPwd_ptr();
     setLastPwd(temp);
 }
