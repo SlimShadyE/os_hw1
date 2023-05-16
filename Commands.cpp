@@ -367,7 +367,6 @@ void JobsCommand::execute(){
 }
 
 void ForegroundCommand::execute(){
-//    char* cmd_line = getCmdLine();
     char** args = getArgsArray();
     int num_of_args = getNumOfArguments();
     JobsList::JobEntry* job = nullptr;
@@ -434,11 +433,12 @@ void ForegroundCommand::execute(){
 }
 
 void BackgroundCommand::execute() {
-    int id, arg1;
+    int id;
     JobsList::JobEntry* job;
     char** args_array = getArgsArray();
     SmallShell& small_shell = SmallShell::getInstance();
     JobsList* jobs_list = small_shell.getJobsList();
+
     if(getNumOfArguments()==1){
         job = jobs_list->getLastStoppedJob(&id);
         if(id==0){
@@ -448,22 +448,19 @@ void BackgroundCommand::execute() {
     }
     else {
         string string1=args_array[1];
-        if (!is_number(string1) || getNumOfArguments() > 2) {
-            cerr << "smash error: bg: invalid arguments" << endl;
+        if (!is_number(string1) || getNumOfArguments() > 1) {
+            cerr << "smash error: fg: invalid arguments" << endl;
             return;
         }
-        cerr<< string1 <<endl;
-        arg1 = stoi(string1);
-        cerr<< arg1 <<endl;
-
+        int arg1 = stoi(string1);
         job = jobs_list->getJobById(arg1);
     }
     if(!job){
-        cerr<<"smash error: bg: job-id "<< arg1 <<" does not exist"<<endl;
+        cerr<<"smash error: bg: job-id "<< id <<" does not exist"<<endl;
         return;
     }
     if(!job->isStopped()){
-        cerr<<"smash error: bg: job-id " << job->getID() << " is already running in the background" <<endl;
+        cerr<<"smash error: bg: job-id " << id << " is already running in the background" <<endl;
         return;
     }
     cout << job->getCmdLine() << " : " << job->getPID() << endl;
@@ -562,12 +559,7 @@ void ExternalCommand::execute(){
         duration = -1;
     }
 
-    cerr<< "External"<<endl;
-
-
     int pid = fork();
-
-    cerr<<"THis is "<< pid << endl;
 
     if(pid == -1){
         perror("smash error: fork failed");
@@ -595,8 +587,8 @@ void ExternalCommand::execute(){
             return;
         }
         //pid>0
-        small_shell.UpdateCurrentProcess(new_job_id,pid,cmd_line);
-        jobs_list->addJob(this, jobs_list->maxJobId()+1, pid);
+
+        jobs_list->addJob(this, new_job_id, pid);
 
         if(timeout){
             //job id is irrelevant in timeout list
@@ -620,7 +612,7 @@ void ExternalCommand::execute(){
 
             //pid>0
 
-            small_shell.UpdateCurrentProcess(new_job_id,pid,cmd_line);
+            small_shell.UpdateCurrentProcess(new_job_id,pid,getCmdLine());
 
             if(waitpid(pid,nullptr,WUNTRACED) == -1){
                 perror("smash error: waitpid failed");
@@ -636,7 +628,7 @@ void ExternalCommand::execute(){
 
         if(pid == 0){
             if(setpgrp() == -1) {
-                cerr<<"smash error: setpgrp failed"<<endl;
+                perror("smash error: setpgrp failed");
                 return;
             }
 
@@ -644,7 +636,7 @@ void ExternalCommand::execute(){
             /// ymkn lazm n3ml copy largs abel mnb3ta
 
             if(execvp(args[0],args) == -1){
-                cerr<<"smash error: execvp failed"<<endl;
+                perror("smash error: execvp failed");
                 return;
             }
             return;
@@ -661,7 +653,7 @@ void ExternalCommand::execute(){
 
         if(waitpid(pid, nullptr,WUNTRACED) == -1)
         {
-            cerr<<"smash error: waitpid failed"<<endl;
+            perror("smash error: waitpid failed");
             return;
         }
 
@@ -995,14 +987,12 @@ void JobsList::sort() {
 }
 
 void JobsList::removeJobById(int jobId){
-    unsigned int num=0;
-    unsigned int i=0;
-    for(auto & job : jobs)
+    unsigned int num;
+    for(unsigned int i=0; i<jobs.size(); i++)
     {
-        if (job->getPID() == jobId) {
+        if (jobs[i]->getID() == jobId) {
             num = i;
         }
-        i++;
     }
     jobs.erase(jobs.begin() + num);
 }
@@ -1038,7 +1028,6 @@ void JobsList::addJob(Command *cmd, int id, int pid, bool is_stopped, time_t dur
             , id, pid, is_stopped, curr_time, duration);
 
     jobs.push_back(new_job);
-
 }
 
 void JobsList::killAllJobs() {
