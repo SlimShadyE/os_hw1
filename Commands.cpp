@@ -433,7 +433,7 @@ void ForegroundCommand::execute(){
 }
 
 void BackgroundCommand::execute() {
-    int id;
+    int id, arg1;
     JobsList::JobEntry* job;
     char** args_array = getArgsArray();
     SmallShell& small_shell = SmallShell::getInstance();
@@ -448,19 +448,23 @@ void BackgroundCommand::execute() {
     }
     else {
         string string1=args_array[1];
-        if (!is_number(string1) || getNumOfArguments() > 1) {
-            cerr << "smash error: fg: invalid arguments" << endl;
+        if (!is_number(string1) || getNumOfArguments() > 2) {
+            cerr << "smash error: bg: invalid arguments" << endl;
             return;
         }
-        int arg1 = stoi(string1);
+        cerr<< string1 <<endl;
+        arg1 = stoi(string1);
+        cerr<< arg1 <<endl;
+
         job = jobs_list->getJobById(arg1);
     }
+
     if(!job){
-        cerr<<"smash error: bg: job-id "<< id <<" does not exist"<<endl;
+        cerr<<"smash error: bg: job-id "<< arg1 <<" does not exist"<<endl;
         return;
     }
     if(!job->isStopped()){
-        cerr<<"smash error: bg: job-id " << id << " is already running in the background" <<endl;
+        cerr<<"smash error: bg: job-id " << job->getID() << " is already running in the background" <<endl;
         return;
     }
     cout << job->getCmdLine() << " : " << job->getPID() << endl;
