@@ -240,9 +240,7 @@ private:
     char* current_job_cmd_line;
     int current_job_id;
     int current_job_pid;
-
     JobsList* timeout_jobs_list;
-
     SmallShell();
 public:
     Command* CreateCommand(const char* cmd_line);
