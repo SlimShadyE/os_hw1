@@ -21,19 +21,29 @@ void ctrlZHandler(int sig_num) {
         return;
     }
 
-    Command* current_command = new ExternalCommand(curr_job_cmd_line);
 
-    jobs_list->addJob(current_command,curr_job_id,curr_job_pid,true);
 
     if(kill(curr_job_pid,SIGSTOP) == -1){
         perror("smash error: kill failed");
-        jobs_list->removeJobById(curr_job_id);
-        delete current_command;
         return;
     }
+
+    Command* current_command = new ExternalCommand(curr_job_cmd_line);
+
+
+    //jobs_list->removeJobById(curr_job_id);
+
+    JobsList::JobEntry* j=jobs_list->getJobById(curr_job_id);
+    if(j != nullptr){
+        j->Stop();
+    }
+    else{
+        jobs_list->addJob(current_command,curr_job_id,curr_job_pid,true);
+    }
+
     cout<< "smash: process "<< curr_job_pid <<" was stopped"<<endl;
 
-//    delete current_command;
+    //delete current_command;
 
     small_shell.NullifyCurrentProcess();
 }
