@@ -350,11 +350,12 @@ void ChangeDirCommand::execute() {
 
         char* temp = getcwd(NULL, 0);
         char* new_pwd = smash.getLastPwd();
-        smash.setLastPwd(temp);
         chdir_res = chdir(new_pwd);
         smash.DeleteLastPwd_ptr();
+        smash.setLastPwd(temp);
+
         if(chdir_res==-1){
-            perror("smash error: chdir failed: No such file or directory");
+            perror("smash error: chdir failed");
             return;
         }
         return;
@@ -364,7 +365,7 @@ void ChangeDirCommand::execute() {
     chdir_res = chdir(args_array[1]);
 //    char* next = getcwd(NULL, 0);
     if(chdir_res==-1){
-        perror("smash error: chdir failed: No such file or directory");
+        perror("smash error: chdir failed");
         return;
     }
     //cout << getcwd(NULL,0) << endl;
