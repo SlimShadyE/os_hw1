@@ -117,8 +117,8 @@ public:
     class JobEntry {
         // TODO: Add your data members
 
-        const char* real_cmd_line;
-        const char* cmd_line;
+        char* real_cmd_line;
+        char* cmd_line;
         int id;
         int pid;
         bool is_stopped;
@@ -133,8 +133,8 @@ public:
         bool isStopped() const;
         void setIsStopped(bool);
         time_t getTime() const;
-        const char* getCmdLine() const;
-        const char* getRealCmdLine() const;
+        char* getCmdLine() const;
+        char* getRealCmdLine() const;
         void Stop();
         void Run();
         bool operator<(const JobEntry& other) const;

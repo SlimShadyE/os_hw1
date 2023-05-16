@@ -176,7 +176,7 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
         return new ForegroundCommand(cmd_line);
     }
     else if(firstWord.compare("bg") == 0){
-        return new ForegroundCommand(cmd_line);
+        return new BackgroundCommand(cmd_line);
     }else{
         return new ExternalCommand(cmd_line);
     }
@@ -247,9 +247,9 @@ Command::Command(const char *cmd_line) {
 
     is_background_cmd = _isBackgroundComamnd(cmd_line);
     if(is_background_cmd){
-        _removeBackgroundSign(this->cmd_line); ///zdt hay
+        _removeBackgroundSign(this->cmd_line);
     }
-    num_of_args = _parseCommandLine(this->cmd_line, args); /** 3'yrt mn cmd_line la cmd_line */
+    num_of_args = _parseCommandLine(this->cmd_line, args);
 }
 
 Command::~Command() {
@@ -367,7 +367,6 @@ void JobsCommand::execute(){
 }
 
 void ForegroundCommand::execute(){
-    char* cmd_line = getCmdLine();
     char** args = getArgsArray();
     int num_of_args = getNumOfArguments();
     JobsList::JobEntry* job = nullptr;
@@ -418,9 +417,9 @@ void ForegroundCommand::execute(){
         job->Run();
     }
 
-    cout << job->getCmdLine() <<" : " << job->getPID() << endl;
+    cout << job->getRealCmdLine() <<" : " << job->getPID() << endl;
 
-    small_shell.UpdateCurrentProcess(job->getID(),job->getPID(),cmd_line);
+    small_shell.UpdateCurrentProcess(job->getID(),job->getPID(),job->getRealCmdLine());
 
     jobs_list->removeJobById(job->getID());
 
@@ -440,7 +439,7 @@ void BackgroundCommand::execute() {
     SmallShell& small_shell = SmallShell::getInstance();
     JobsList* jobs_list = small_shell.getJobsList();
 
-    if(getNumOfArguments()==0){
+    if(getNumOfArguments()==1){
         job = jobs_list->getLastStoppedJob(&id);
         if(id==0){
             cerr<<"smash error: bg: there is no stopped jobs to resume" <<endl;
@@ -538,6 +537,7 @@ void ExternalCommand::execute(){
     JobsList* jobs_list = small_shell.getJobsList();
     JobsList* timeout_jobs_list = small_shell.getTimeOutJobsList();
 
+    int new_job_id = jobs_list->maxJobId()+1;
 
     string cmd_line_string = string(cmd_line);
 
@@ -565,6 +565,7 @@ void ExternalCommand::execute(){
         perror("smash error: fork failed");
         return;
     }
+
     char *  new_args[4];
     new_args[0] = new char[10];
     new_args[1] = new char[3];
@@ -587,7 +588,7 @@ void ExternalCommand::execute(){
         }
         //pid>0
 
-        jobs_list->addJob(this, jobs_list->maxJobId()+1, pid);
+        jobs_list->addJob(this, new_job_id, pid);
 
         if(timeout){
             //job id is irrelevant in timeout list
@@ -611,20 +612,14 @@ void ExternalCommand::execute(){
 
             //pid>0
 
-            small_shell.UpdateCurrentProcess(-1,pid,cmd_line);
+            small_shell.UpdateCurrentProcess(new_job_id,pid,getCmdLine());
 
             if(waitpid(pid,nullptr,WUNTRACED) == -1){
                 perror("smash error: waitpid failed");
                 return;
             }
-            small_shell.NullifyCurrentProcess();
 
-//            jobs_list->addJob(this, jobs_list->maxJobId()+1, pid);
-//
-//            if(timeout){
-//                //job id is irrelevant in timeout list
-//                timeout_jobs_list->addJob(this, -1, pid, false, duration);
-//            }
+            small_shell.NullifyCurrentProcess();
 
             return;
         }
@@ -649,11 +644,11 @@ void ExternalCommand::execute(){
         //pid>0
 
         //the job id is set to -1 because it is irrelevant in this case
-        small_shell.UpdateCurrentProcess(-1,pid,cmd_line);
+        small_shell.UpdateCurrentProcess(new_job_id,pid,getCmdLine());
 
         if(timeout){
             //job id is irrelevant in timeout list
-            timeout_jobs_list->addJob(this, -1, pid, false, duration);
+            timeout_jobs_list->addJob(this, -1, pid,false, duration);
         }
 
         if(waitpid(pid, nullptr,WUNTRACED) == -1)
@@ -899,11 +894,11 @@ time_t JobsList::JobEntry::getTime() const {
     return time;
 }
 
-const char* JobsList::JobEntry::getCmdLine() const {
+char* JobsList::JobEntry::getCmdLine() const {
     return cmd_line;
 }
 
-const char* JobsList::JobEntry::getRealCmdLine() const {
+char* JobsList::JobEntry::getRealCmdLine() const {
     return real_cmd_line;
 }
 
@@ -1004,14 +999,16 @@ void JobsList::addJob(Command *cmd, int id, int pid, bool is_stopped, time_t dur
 //    else{
 //        job_id = id;
 //    }
-    time_t curr_time;
-    time(&curr_time);
 
+    time_t curr_time;
+    if(time(&curr_time) == ((time_t) - 1)){
+        perror("smash error: time failed");
+        return;
+    }
     auto* new_job = new JobEntry(cmd->getRealCmdLine(),cmd->getCmdLine()
             , id, pid, is_stopped, curr_time, duration);
 
     jobs.push_back(new_job);
-
 }
 
 void JobsList::killAllJobs() {

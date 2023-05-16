@@ -33,7 +33,7 @@ void ctrlZHandler(int sig_num) {
     }
     cout<< "smash: process "<< curr_job_pid <<" was stopped"<<endl;
 
-    delete current_command;
+//    delete current_command;
 
     small_shell.NullifyCurrentProcess();
 }
