@@ -454,18 +454,19 @@ void BackgroundCommand::execute() {
         }
         int arg1 = stoi(string1);
         job = jobs_list->getJobById(arg1);
-        if(!job){
-            cerr<<"smash error: bg: job-id "<< id <<" does not exist"<<endl;
-            return;
-        }
-        if(!job->isStopped()){
-            cerr<<"smash error: bg: job-id " << id << " is already running in the background" <<endl;
-            return;
-        }
-        cout<< job->getCmdLine() << " : " << job->getPID() << endl;
-        kill(job->getPID(), SIGCONT);
-        job->setIsStopped(false);
     }
+
+    if(!job){
+        cerr<<"smash error: bg: job-id "<< id <<" does not exist"<<endl;
+        return;
+    }
+    if(!job->isStopped()){
+        cerr<<"smash error: bg: job-id " << id << " is already running in the background" <<endl;
+        return;
+    }
+    cout << job->getCmdLine() << " : " << job->getPID() << endl;
+    kill(job->getPID(), SIGCONT);
+    job->setIsStopped(false);
 }
 
 void QuitCommand::execute(){
@@ -1012,7 +1013,7 @@ void JobsList::addJob(Command *cmd, int id, int pid, bool is_stopped, time_t dur
 }
 
 void JobsList::killAllJobs() {
-    cout<< "sending SIGKILL signal to " << jobs.size() <<" jobs:" << endl;
+    cout<< "smash: sending SIGKILL signal to " << jobs.size() <<" jobs:" << endl;
     for(unsigned i=0 ; i<jobs.size() ; i++ ){
         if(kill(jobs[i]->getPID(),SIGKILL)){
             perror("smash error: kill failed");
