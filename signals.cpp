@@ -28,9 +28,6 @@ void ctrlZHandler(int sig_num) {
         return;
     }
 
-    Command* current_command = new ExternalCommand(curr_job_cmd_line);
-
-
     //jobs_list->removeJobById(curr_job_id);
 
     JobsList::JobEntry* j=jobs_list->getJobById(curr_job_id);
@@ -38,6 +35,7 @@ void ctrlZHandler(int sig_num) {
         j->Stop();
     }
     else{
+        Command* current_command = new ExternalCommand(curr_job_cmd_line);
         jobs_list->addJob(current_command,curr_job_id,curr_job_pid,true);
     }
 

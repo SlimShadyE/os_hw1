@@ -458,7 +458,6 @@ void BackgroundCommand::execute() {
 
         job = jobs_list->getJobById(arg1);
     }
-
     if(!job){
         cerr<<"smash error: bg: job-id "<< arg1 <<" does not exist"<<endl;
         return;
@@ -949,15 +948,34 @@ void JobsList::removeFinishedJobs()
     }
 }
 
+bool compareJobs(const JobsList::JobEntry* a, const JobsList::JobEntry* b){
+    return a->getID() < b->getID();
+}
+
 void JobsList::printJobsList(){
     removeFinishedJobs();
-    sort();
+    std::sort(jobs.begin(), jobs.end(),compareJobs);
 
     time_t time_diff;
     time_t curr_time;
     time(&curr_time);
 
-    for(auto & job : jobs){
+//    for(auto  job=jobs.rbegin(); job!= jobs.rend(); ++job){
+//        JobsList::JobEntry* j=*job;
+//        time_diff = difftime(curr_time, j->getTime());
+//
+//        cout << "[" << to_string(j->getID()) << "] ";
+//        cout << j->getRealCmdLine() << " : " << j->getPID() << " " << time_diff << " secs";
+//
+//        if(j->isStopped())
+//        {
+//            cout<<" (stopped)";
+//        }
+//
+//        cout << endl;
+//    }
+
+    for(auto&  job:jobs){
         time_diff = difftime(curr_time, job->getTime());
 
         cout << "[" << to_string(job->getID()) << "] ";
