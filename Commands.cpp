@@ -111,6 +111,11 @@ bool ContainsNumber(const string &s){
 
 /*** SMALLSHELL FUNCTIONS ***/
 
+void SmallShell::setLastPwd(char* new_path){
+    char* path = new char[strlen(new_path)+1];
+    strcpy(path,new_path);
+    plast_pwd = path;
+}
 
 SmallShell::SmallShell():prompt("smash")
 {
@@ -233,6 +238,8 @@ JobsList* SmallShell::getTimeOutJobsList() {
     return timeout_jobs_list;
 }
 
+
+
 /*********************************************************************************************************************/
 
 /*** COMMAND FUNCTIONS ***/
@@ -328,6 +335,7 @@ void GetCurrDirCommand::execute() {
 }
 
 void ChangeDirCommand::execute() {
+    SmallShell& smash= SmallShell::getInstance();
     int chdir_res;
     char** args_array = getArgsArray();
     if(getNumOfArguments() > 2){
@@ -335,17 +343,17 @@ void ChangeDirCommand::execute() {
         return;
     }
     if(strcmp(args_array[1],"-")==0){
-        if(!getLastPwd()){
+        if(!smash.getLastPwd()){
             cerr << "smash error: cd: OLDPWD not set" << endl;
             return;
         }
 
         char* temp = getcwd(NULL, 0);
-        char* new_pwd = getLastPwd();
-        DeleteLastPwd_ptr();
-        setLastPwd(temp);
+        char* new_pwd = smash.getLastPwd();
+        smash.setLastPwd(temp);
         chdir_res = chdir(new_pwd);
-        if(!chdir_res){
+        smash.DeleteLastPwd_ptr();
+        if(chdir_res==-1){
             perror("smash error: chdir failed: No such file or directory");
             return;
         }
@@ -361,8 +369,8 @@ void ChangeDirCommand::execute() {
     }
     //cout << getcwd(NULL,0) << endl;
 
-    DeleteLastPwd_ptr();
-    setLastPwd(temp);
+    smash.DeleteLastPwd_ptr();
+    smash.setLastPwd(temp);
 }
 
 void JobsCommand::execute(){

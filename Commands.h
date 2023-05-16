@@ -236,7 +236,7 @@ private:
     std::string prompt;
     int shell_pid;
     JobsList* jobs_list;
-
+    char* plast_pwd;
     char* current_job_cmd_line;
     int current_job_id;
     int current_job_pid;
@@ -254,7 +254,14 @@ public:
     }
     ~SmallShell();
     void executeCommand(const char* cmd_line);
-
+    char* getLastPwd(){
+        return plast_pwd;
+    }
+    void setLastPwd(char* new_path);
+    void DeleteLastPwd_ptr() {
+        delete plast_pwd;
+        plast_pwd = nullptr; /// 3'yrt mn NULL la nullptr
+    }
     std::string getPrompt();
     void setPrompt(std::string&);
     int getPid();
