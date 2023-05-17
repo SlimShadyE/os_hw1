@@ -86,6 +86,7 @@ void _removeBackgroundSign(char* cmd_line) {
 
 /*** ADDED HELPING FUNCTIONS ***/
 
+//doesn't take into consideration minus numbers
 bool is_number(const std::string& s) {
     if (s.empty()) {
         return false;
@@ -98,6 +99,7 @@ bool is_number(const std::string& s) {
     return true;
 }
 
+//doesn't take into consideration minus numbers
 bool ContainsNumber(const string &s){
     for (char const &i : s){
         if (std::isdigit(i) == 0){
@@ -353,7 +355,6 @@ void ChangeDirCommand::execute() {
         chdir_res = chdir(new_pwd);
         smash.DeleteLastPwd_ptr();
         smash.setLastPwd(temp);
-
         if(chdir_res==-1){
             perror("smash error: chdir failed");
             return;
@@ -412,6 +413,14 @@ void ForegroundCommand::execute(){
             }
 
         } else{
+            // if the second argument is a negative number
+            string sub_str = string(args[1]).substr(1);
+            if(string(args[1]).substr(0,1)=="-" && ContainsNumber(sub_str)){
+                int job_id = stoi(args[1]);
+                cerr << "smash error: fg: job-id " << job_id << " does not exist" << endl;
+                return;
+            }
+
             // if the second argument  isn't a number
             cerr << "smash error: fg: invalid arguments" << endl;
             return;
@@ -462,13 +471,21 @@ void BackgroundCommand::execute() {
     }
     else {
         string string1=args_array[1];
-        if (!is_number(string1) || getNumOfArguments() > 2) {
+        if (getNumOfArguments() > 2) {
             cerr << "smash error: bg: invalid arguments" << endl;
             return;
         }
-        cerr<< string1 <<endl;
+        //if number is negative
+        if(string1.substr(0,1)=="-" && is_number(string1.substr(1))){
+            int job_id = stoi(string1);
+            cerr<<"smash error: bg: job-id "<< job_id <<" does not exist"<<endl;
+            return;
+        }
+        if(!is_number(string1)){
+            cerr << "smash error: bg: invalid arguments" << endl;
+            return;
+        }
         arg1 = stoi(string1);
-        cerr<< arg1 <<endl;
 
         job = jobs_list->getJobById(arg1);
     }
@@ -500,12 +517,15 @@ void QuitCommand::execute(){
 }
 
 void KillCommand::execute() {
+    if(getNumOfArguments() != 3){
+        cerr << "smash error: kill: invalid arguments" <<  endl;
+        return;
+    }
+
     char** args_array=getArgsArray();
     string first_arg = args_array[1], second_arg;
     SmallShell& small_shell = SmallShell::getInstance();
     JobsList* jobs_list = small_shell.getJobsList();
-
-    /***ARGS ARE PASSED CHAR* Convert to int*/
 
     if(first_arg.substr(0,1) == "-"){
         first_arg = first_arg.substr(1);
@@ -523,6 +543,16 @@ void KillCommand::execute() {
             return;
         }
         second_arg = args_array[2];
+        if(second_arg.substr(0,1) == "-"){
+            if(!is_number(second_arg.substr(1))){
+                cerr << "smash error: kill: invalid arguments" <<  endl;
+                return;
+            }else{
+                int job_id = stoi(second_arg);
+                cerr<< "smash error: kill: job-id "<< job_id << " does not exist" << endl;
+                return;
+            }
+        }
         if(second_arg.length()==0){
             cerr << "smash error: kill: invalid arguments" <<  endl;
             return;
@@ -540,7 +570,13 @@ void KillCommand::execute() {
         if(-1!=kill(job->getPID(),signum)){
             cout << "signal number " << signum << " was sent to pid " << job->getPID() << endl;
         }
-        /*** Do we need to add SIGSTOPPED and SIGCONT to stop and continue jobs ??? */
+
+        if(signum == SIGCONT){
+            job->setIsStopped(false);
+        }
+        if(signum == SIGSTOP){
+            job->setIsStopped(true);
+        }
     }
     else{
         cerr<< "smash error: kill: invalid arguments"<<endl;
