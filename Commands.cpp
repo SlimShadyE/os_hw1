@@ -885,17 +885,14 @@ void ChmodCommand::execute(){
 
     char* cmd_line_cpy = strdup(cmd_line);
 
-    // Convert the permissions string to an integer
     mode_t permissions = strtol(args[1], NULL, 8);
 
-    // Open the file for read/write access
     int fd = open(path, O_RDWR);
     if (fd < 0) {
         free(cmd_line_cpy);
         return;
     }
 
-    // Get the current file permissions
     struct stat st;
     if (fstat(fd, &st) < 0) {
         close(fd);
@@ -903,7 +900,6 @@ void ChmodCommand::execute(){
         return;
     }
 
-    // Set the new file permissions
     st.st_mode = (st.st_mode & ~0777) | permissions;
     if (fchmod(fd, st.st_mode) < 0) {
         close(fd);
@@ -1096,7 +1092,7 @@ void JobsList::killAllJobs() {
             perror("smash error: kill failed");
             return;
         }
-        cout << jobs[i]->getID() << ": " << jobs[i]->getRealCmdLine() << endl;
+        cout << jobs[i]->getPID() << ": " << jobs[i]->getRealCmdLine() << endl;
     }
 }
 
@@ -1139,26 +1135,43 @@ std::vector<JobsList::JobEntry *> *JobsList::getJobsVector() {
 
 void RedirectionCommand::execute() {
     SmallShell& smash = SmallShell::getInstance();
+    bool appending=false;
     string cmd_line = getCmdLine();
     string command = cmd_line.substr(0, cmd_line.find_first_of('>'));
     /**CAN ARGS BE GREATER THAN 3 ? IF NO CHECK NUM OF ARGS (ANSWER:NO)
      * replace stdout_fileno with numbers*/
     char** args_array = getArgsArray();
     int i=0;
-
-    while(strcmp(args_array[i] ,">")!=0  && strcmp(args_array[i] , ">>") != 0){
+    string str(cmd_line);
+    if(str.find(">>")!=string::npos){
+        appending=true;
+    }
+    while(strcmp(args_array[i] ,">")!=0  && strcmp(args_array[i] , ">>") != 0 && string(args_array[i]).find('>') == string::npos){
         i++;
     }
-    string redirection_char = args_array[i];
+    string destination;
+    string curr_arg = string(args_array[i]);
+    if(!args_array[i+1]) {
+        if (!appending) {
+            destination = curr_arg.substr(curr_arg.find_first_of('>')+1);
+        }
+        else{
+            destination = curr_arg.substr(curr_arg.find_first_of('>')+2);
 
-    i++;
-    char* destination = args_array[i];
+        }
+    }
+    else{
+        i++;
+        destination = args_array[i];
+    }
+//    string redirection_char = args_array[i];
+
     int save_stdout = dup(STDOUT_FILENO);
     close(STDOUT_FILENO);
     int new_fd;
 
-    int flags = (redirection_char == ">") ? (O_WRONLY | O_CREAT | O_TRUNC) :
-                (redirection_char == ">>") ? (O_WRONLY | O_CREAT | O_APPEND) :
+    int flags = (appending==false) ? (O_WRONLY | O_CREAT | O_TRUNC) :
+                (appending == true) ? (O_WRONLY | O_CREAT | O_APPEND) :
                 -1;
 
     if(flags == -1){ //if there are more than two >>
@@ -1166,7 +1179,7 @@ void RedirectionCommand::execute() {
         return;
     }
 
-    new_fd = open(destination,flags, 0655);
+    new_fd = open(destination.c_str(),flags, 0655);
     if(new_fd < 0){
         perror("smash error: open failed");
         dup2(save_stdout,STDOUT_FILENO);
@@ -1179,6 +1192,7 @@ void RedirectionCommand::execute() {
     dup2(save_stdout,STDOUT_FILENO);
     close(save_stdout);
 }
+
 
 time_t JobsList::JobEntry::getDuration() {
     return duration;
