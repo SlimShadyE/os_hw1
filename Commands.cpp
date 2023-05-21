@@ -5,10 +5,11 @@
 #include <sstream>
 #include <sys/wait.h>
 #include <iomanip>
-#include <algorithm>
 #include "Commands.h"
 #include <sys/stat.h>
-#include "fcntl.h"
+#include <fcntl.h>
+#include <algorithm>
+
 
 using namespace std;
 
@@ -83,8 +84,27 @@ void _removeBackgroundSign(char* cmd_line) {
     cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
-
 /*** ADDED HELPING FUNCTIONS ***/
+
+void removeBackgroundSign_Custom(char* cmd_line){
+    char* temp = new char[COMMAND_ARGS_MAX_LENGTH];
+    bool found = false;
+    strcpy(temp,cmd_line);
+    int i=0;
+    while(temp[i] != '\0'){
+        if(!found && temp[i] == '&'){
+            found = true;
+            continue;
+        }
+        if(!found){
+            cmd_line[i] = temp[i];
+        }else{
+            cmd_line[i] = temp[i+1];
+        }
+        i++;
+    }
+    delete[] temp;
+}
 
 //doesn't take into consideration minus numbers
 bool is_number(const std::string& s) {
@@ -131,6 +151,8 @@ SmallShell::SmallShell():prompt("smash")
 
     jobs_list = new JobsList();
     timeout_jobs_list = new JobsList();
+
+    NullifyCurrentProcess();
 }
 
 SmallShell::~SmallShell() {
@@ -246,7 +268,6 @@ JobsList* SmallShell::getTimeOutJobsList() {
 
 /*** COMMAND FUNCTIONS ***/
 
-
 Command::Command(const char *cmd_line) {
     args = new char*[COMMAND_MAX_ARGS];
     real_cmd_line = new char[COMMAND_ARGS_MAX_LENGTH];
@@ -256,7 +277,7 @@ Command::Command(const char *cmd_line) {
 
     is_background_cmd = _isBackgroundComamnd(cmd_line);
     if(is_background_cmd){
-        _removeBackgroundSign(this->cmd_line);
+        removeBackgroundSign_Custom(this->cmd_line);
     }
     num_of_args = _parseCommandLine(this->cmd_line, args);
 }
@@ -306,7 +327,6 @@ void Command::DeleteLastPwd_ptr() {
 /*********************************************************************************************************************/
 
 /*** EXECUTE FUNCTIONS ***/
-
 
 void ChpromptCommand::execute() {
     SmallShell& smallshell = SmallShell::getInstance();
@@ -591,7 +611,8 @@ void ExternalCommand::execute(){
     JobsList* jobs_list = small_shell.getJobsList();
     JobsList* timeout_jobs_list = small_shell.getTimeOutJobsList();
 
-    int new_job_id = jobs_list->maxJobId()+1;
+
+    int new_job_id = jobs_list->maxJobId() + 1;
 
     string cmd_line_string = string(cmd_line);
 
@@ -628,44 +649,44 @@ void ExternalCommand::execute(){
     new_args[2] = cmd_line;
     new_args[3] = NULL;
 
-    if(is_bg_cmd){
-        if(pid == 0){
-            if(setpgrp() == -1) {
-                perror("smash error: setpgrp failed");
-                return;
-            }
+    if(pid == 0){
+        if(setpgrp() == -1) {
+            perror("smash error: setpgrp failed");
+            return;
+        }
+
+        if(is_bg_cmd){
             if(execv("/bin/bash", new_args) == -1){
                 perror("smash error: execv failed");
                 return;
             }
             return;
-        }
-        //pid>0
-
-        jobs_list->addJob(this, new_job_id, pid);
-
-        if(timeout){
-            //job id is irrelevant in timeout list
-            timeout_jobs_list->addJob(this, -1, pid, false, duration);
-        }
-        return;
-
-    } else{
-        if(is_complex){
-            if(pid == 0){
-                if(setpgrp() == -1) {
-                    perror("smash error: setpgrp failed");
-                    return;
-                }
-                if(execv("/bin/bash", new_args) == -1){
-                    perror("smash error: execv failed");
-                    return;
-                }
+        }else if(is_complex){
+            if(execv("/bin/bash", new_args) == -1){
+                perror("smash error: execv failed");
                 return;
             }
+            return;
+        }else{
+            // if is simple
+            if(execvp(args[0], args) == -1){
+                perror("smash error: execvp failed");
+                return;
+            }
+            return;
+        }
+    }
 
-            //pid>0
+    if(pid > 0){
+        if(is_bg_cmd){
+            jobs_list->addJob(this, new_job_id, pid);
 
+            if(timeout){
+                //job id is irrelevant in timeout list
+                timeout_jobs_list->addJob(this, -1, pid, false, duration);
+            }
+            return;
+        }else if(is_complex){
             small_shell.UpdateCurrentProcess(new_job_id,pid,getCmdLine());
 
             if(waitpid(pid,nullptr,WUNTRACED) == -1){
@@ -676,43 +697,24 @@ void ExternalCommand::execute(){
             small_shell.NullifyCurrentProcess();
 
             return;
-        }
+        }else{
+            //the job id is set to -1 because it is irrelevant in this case
+            small_shell.UpdateCurrentProcess(new_job_id,pid,getCmdLine());
 
-        // if not complex and is fg
+            if(timeout){
+                //job id is irrelevant in timeout list
+                timeout_jobs_list->addJob(this, -1, pid,false, duration);
+            }
 
-        if(pid == 0){
-            if(setpgrp() == -1) {
-                perror("smash error: setpgrp failed");
+            if(waitpid(pid, nullptr,WUNTRACED) == -1)
+            {
+                perror("smash error: waitpid failed");
                 return;
             }
 
-
-            /// ymkn lazm n3ml copy largs abel mnb3ta
-
-            if(execvp(args[0],args) == -1){
-                perror("smash error: execvp failed");
-                return;
-            }
-            return;
+            /// msh lazm atapel bl process el current abel el3amaleyye?
+            small_shell.NullifyCurrentProcess();
         }
-        //pid>0
-
-        //the job id is set to -1 because it is irrelevant in this case
-        small_shell.UpdateCurrentProcess(new_job_id,pid,getCmdLine());
-
-        if(timeout){
-            //job id is irrelevant in timeout list
-            timeout_jobs_list->addJob(this, -1, pid,false, duration);
-        }
-
-        if(waitpid(pid, nullptr,WUNTRACED) == -1)
-        {
-            perror("smash error: waitpid failed");
-            return;
-        }
-
-        /// msh lazm atapel bl process el current abel el3amaleyye?
-        small_shell.NullifyCurrentProcess();
     }
 }
 
@@ -736,17 +738,16 @@ void PipeCommand::execute() {
     }
     char last_char = pipe_string.back();//to check if & is there
 
-//    int save_stdin = dup(STDIN_FILENO); //To save the stdin file object for later
-    dup(STDIN_FILENO);
-    pid_t pid=fork();
-    if(pid<0){
+    //int save_stdin = dup(STDIN_FILENO); //To save the stdin file object for later
+    //dup(STDIN_FILENO);
+    pid_t pid_left = fork();
+    if(pid_left<0){
         perror("smash error: fork failed");
         return;
     }
     /** Check if the arguments are of a valid form
      * AND CHECK IF WE SHOULD REPLACE PERROR WITH CERR << **/
-    if(pid==0){ //Child
-        setpgrp();
+    if(pid_left==0){ //left command (Child)
         //printf("CHILD \n");
         if(last_char == '&'){
             if(close(new_pipe[0]) || close(2)){
@@ -759,7 +760,6 @@ void PipeCommand::execute() {
             }
         }
         else{
-
             if(close(new_pipe[0]) || close(1)){
                 perror("smash error: close failed");
                 return;
@@ -773,9 +773,11 @@ void PipeCommand::execute() {
         Command* command = SmallShell::getInstance().CreateCommand(before_pipe.c_str());
         command->execute();
         delete command;
-        exit(0);
+        exit(1);
     }
-    else{
+    pid_t pid_right = fork();
+    if(pid_right==0){ //right command (Child)
+        setpgrp();
         if(close(new_pipe[1]) || close(0)){
             perror("smash error: close failed");
             return;
@@ -786,15 +788,19 @@ void PipeCommand::execute() {
         //printf("After pipe %s \n", after_pipe.c_str());
         Command* command = SmallShell::getInstance().CreateCommand(after_pipe.c_str());
         command->execute();
-        int wait = waitpid(pid,nullptr,0);
-        if(wait==-1){
-            perror("smash error: wait failed");
-            delete command;
-            return;
-        }
+//        int wait = waitpid(pid,nullptr,0);
+//        if(wait==-1){
+//            perror("smash error: wait failed");
+//            delete command;
+//            return;
+//        }
         delete command;
-        exit(0);
+        exit(1);
     }
+    close(new_pipe[0]);
+    close(new_pipe[1]);
+    waitpid(pid_left,nullptr,0);
+    waitpid(pid_right,nullptr,0);
 }
 
 void SetcoreCommand::execute() {
@@ -930,7 +936,6 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd):BuiltI
 /*********************************************************************************************************************/
 
 /*** JOBLIST FUNCTIONS ***/
-
 
 int JobsList::JobEntry::getID() const {
     return  id;

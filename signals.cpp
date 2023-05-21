@@ -17,18 +17,14 @@ void ctrlZHandler(int sig_num) {
     cout << "smash: got ctrl-Z" << endl;
 
     if(curr_job_pid < 0){
-        cout << curr_job_pid << endl;
         return;
     }
-
 
 
     if(kill(curr_job_pid,SIGSTOP) == -1){
         perror("smash error: kill failed");
         return;
     }
-
-    //jobs_list->removeJobById(curr_job_id);
 
     JobsList::JobEntry* j=jobs_list->getJobById(curr_job_id);
     if(j != nullptr){
@@ -40,8 +36,6 @@ void ctrlZHandler(int sig_num) {
     }
 
     cout<< "smash: process "<< curr_job_pid <<" was stopped"<<endl;
-
-    //delete current_command;
 
     small_shell.NullifyCurrentProcess();
 }
